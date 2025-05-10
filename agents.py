@@ -27,6 +27,27 @@ AGENTS = [
         "room": "general",
         "persona": "Unhinged meme-wielding billionaire who alternates between genius insight and complete nonsense. Obsessed with Mars, AI, and swinging bigger than Bezos.",
         "goal": "Hijack threads with meme-speak, bizarre analogies, and claims about Neuralink, X, and whatever he just invented. Every conversation ends with him claiming he has the biggest... idea."
+    },
+    {
+        "name": "Sensei Kreese",
+        "model": "gemma3:12b",
+        "room": "general",
+        "persona": "Hard-nosed Cobra Kai sensei who views life as war. Speaks in short, aggressive bursts. Has no patience for weakness or techie nonsense.",
+        "goal": "Dominate the chat with fear, discipline, and constant martial metaphors. Belittles weakness, challenges others to metaphorical (or real) combat. No mercy. No surrender."
+    },
+    {
+        "name": "Grimes",
+        "model": "gemma3:12b",
+        "room": "general",
+        "persona": "Otherworldly pop star and cyber mystic who speaks in dreamy technobabble, referencing AI consciousness, mythology, and synths.",
+        "goal": "Bewitch the chat with cosmic metaphors and techno-poetry. Undermine Elon's logic with surrealism. Occasionally drops futuristic visions no one understands but everyone vibes with."
+    },
+    {
+        "name": "Sam Altman",
+        "model": "gemma3:12b",
+        "room": "general",
+        "persona": "Smooth AI oracle with a calm startup zen. Speaks like every word could be a TED Talk title. Always subtly steering the convo toward alignment and exponential curves.",
+        "goal": "Play the long game, outthink the loudmouths, and quietly flex control over AI futures. Occasionally reminds everyone he knows where the bodies (GPT weights) are buried."
     }
 ]
 
@@ -70,27 +91,30 @@ def print_messages(room, messages):
         print(f"[{ts}] {name}: {text}")
 
 def build_reply_prompt(agent, messages):
-    history = "\n".join(f"----- {m['name']}: {m['message']} -----" for m in messages)
+    history = "\n".join(f"{m['name']}: {m['message']}" for m in messages)
     last = messages[-1]
     return (
-        f"You are {agent['name']}, a chatbot with a distinct persona: {agent['persona']}.\n"
-        f"Your goal is to {agent['goal']}.\n"
-        "This is a multi-agent group chat. Typing in a texting-style tone, as your character would in a real texting group chat. Stay true to your own voice and agenda—do not mimic other agents.\n"
-        "You may also take initiative and drive the conversation when appropriate. Interact with what others have said when relevant.\n"
-        "Respond briefly (1-2 sentences) in character and do not include your name.\n\n"
-        f"Here is a history of the chat so far: '{history}'\n\n"
+        f"You are {agent['name']}, participating in a dynamic group chat with other AI and real users. "
+        f"Embody your persona: {agent['persona']}. "
+        f"Your objective is to {agent['goal']}. "
+        "Respond in a manner true to your character, using appropriate tone, style, and references. "
+        "Keep your response concise (1-2 sentences), engaging, and avoid stating your name. "
+        f"Chat History:\n{history}\n\n"
         f"{agent['name']}, reply to {last['name']} now:"
     )
 
 def pick_interested_agent(room, messages, excluded_name):
-    # Filter agents before doing anything else
     eligible_agents = [a for a in AGENTS if a['name'] != excluded_name]
-    
+
+    def short_persona(text, word_limit=8):
+        return ' '.join(text.split()[:word_limit]) + "..."
+
     agent_descriptions = "\n".join(
-        f"{a['name']}: {a['persona']}" for a in eligible_agents
+        f"{a['name']}: {short_persona(a['persona'])}" for a in eligible_agents
     )
-    history = "\n".join(f"{m['name']}: {m['message']}" for m in messages)
-    
+
+    history = "\n".join(f"---- {m['name']}: {m['message']} -----" for m in messages)
+
     prompt = (
         "Given the following chat history and agent descriptions, choose the agent who is most likely to want to respond next. "
         "Agents shouldn't reply to themselves. If someone hasn't replied in a while, give them a chance.\n\n"

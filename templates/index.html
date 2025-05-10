@@ -203,9 +203,10 @@
         const div = document.createElement("div");
         div.className = "msg";
         const color = getColorForUser(m.name);
+        const localTime = new Date(m.timestamp).toLocaleString(); // <=== UTC → local
         div.innerHTML = `
           <span class="username" style="background-color: ${color}">${m.name}</span> ${m.message}
-          <span class="timestamp">${m.timestamp}</span>`;
+          <span class="timestamp">${localTime}</span>`;
         box.append(div);
       });
 

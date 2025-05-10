@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from pymongo import MongoClient, ReturnDocument
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import time
 
@@ -63,7 +63,7 @@ def post_message(room):
         "room": room,
         "name": data["name"],
         "message": data["message"],
-        "timestamp": datetime.now(),
+        "timestamp": datetime.now(timezone.utc),
         "seq": seq
     }
     db.messages.insert_one(msg)
@@ -73,3 +73,6 @@ def post_message(room):
         del _message_cache[key]
 
     return jsonify({"status": "ok", "seq": seq}), 201
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
