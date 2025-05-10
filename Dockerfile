@@ -1,17 +1,14 @@
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
 COPY . .
 
-# Expose the port
+# Optional but recommended
 EXPOSE 8080
 
-# Run the app
-CMD ["python", "server.py"]
+# Use gunicorn for production readiness
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "server:app"]

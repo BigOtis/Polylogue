@@ -11,7 +11,6 @@ CORS(app)
 client = MongoClient(os.environ["MONGO_URL"])
 db = client.chats
 
-# In-memory message cache
 _message_cache = {}
 
 @app.route('/')
@@ -36,7 +35,6 @@ def get_messages(room):
         except ValueError:
             pass
 
-    # Caching key and logic
     cache_key = (room, frozenset(q.items()))
     if cache_key in _message_cache:
         cached_time, cached_result = _message_cache[cache_key]
@@ -70,13 +68,8 @@ def post_message(room):
     }
     db.messages.insert_one(msg)
 
-    # Invalidate all cache entries for this room
     keys_to_invalidate = [key for key in _message_cache if key[0] == room]
     for key in keys_to_invalidate:
         del _message_cache[key]
 
     return jsonify({"status": "ok", "seq": seq}), 201
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port, debug=True)
