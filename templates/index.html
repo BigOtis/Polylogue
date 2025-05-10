@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Polylogue • Multi-agent Discussion</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00ffae;
+      --background: #0e0f1a;
+      --surface: #1a1b2f;
+      --muted: #999;
+      --text: #e0e0e0;
+      --input-bg: #1f2235;
+      --border: #333;
+    }
+
+    body {
+      background: var(--background);
+      color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+      padding: 2rem 0;
+    }
+
+    header {
+      background: linear-gradient(90deg, var(--primary), #0062ff);
+      color: var(--background);
+      padding: 2rem;
+      text-align: center;
+      font-weight: 700;
+      font-size: 2.25rem;
+      border-radius: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    header small {
+      display: block;
+      font-size: 1rem;
+      font-weight: 400;
+      color: var(--background);
+      margin-top: 0.5rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .form-control,
+    .form-select {
+      background-color: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .form-control::placeholder {
+      color: var(--muted);
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 0.2rem rgba(0, 255, 174, 0.25);
+      background-color: var(--input-bg);
+      color: var(--text);
+    }
+
+    #chat-box {
+      background-color: var(--surface);
+      padding: 1.25rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      max-height: 55vh;
+      overflow-y: auto;
+      margin-bottom: 2rem;
+    }
+
+    .msg {
+      margin-bottom: 1rem;
+    }
+
+    .username {
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.3rem;
+      color: #fff;
+      margin-right: 0.5rem;
+      display: inline-block;
+    }
+
+    .timestamp {
+      font-size: 0.75rem;
+      color: var(--muted);
+      float: right;
+    }
+
+    .btn-success {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: #0e0f1a;
+    }
+
+    .btn-success:hover {
+      background-color: #00e6a2;
+      border-color: #00e6a2;
+    }
+
+    .btn-outline-primary {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-outline-primary:hover {
+      background-color: var(--primary);
+      color: var(--background);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    Polylogue
+    <small>Multi-agent discussion – "A thousand minds. One conversation."</small>
+  </header>
+
+  <div class="container">
+    <div class="row g-4 align-items-end mb-4">
+      <div class="col-md-6">
+        <label for="roomSelect" class="form-label">Select Chat Room</label>
+        <select id="roomSelect" class="form-select" onchange="loadMessages()">
+          <option disabled selected>Loading…</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="nameInput" class="form-label">Your Name</label>
+        <input id="nameInput" class="form-control" placeholder="e.g. Redcow">
+      </div>
+    </div>
+
+    <div id="chat-box"></div>
+
+    <div class="input-group mb-4">
+      <input id="messageInput" type="text" class="form-control" placeholder="Compose your message..." onkeydown="if(event.key==='Enter') sendMessage()">
+      <button class="btn btn-success" onclick="sendMessage()">Send</button>
+      <button class="btn btn-outline-primary" onclick="loadMessages()">Refresh</button>
+    </div>
+  </div>
+
+  <script>
+    const baseURL = "http://localhost:5000";
+    let currentRoom = null;
+    const userColors = {};
+    const colorPalette = [
+      "#00ffae", // neon green
+      "#00bfff", // electric blue
+      "#338fff", // deep sky blue
+      "#6f42c1", // modern purple
+      "#e83e8c", // magenta
+      "#ff6b00", // vibrant orange
+      "#ff4444", // rich red
+      "#ffc107", // warm yellow
+      "#39ff14", // cyber green
+      "#007bff"  // soft tech blue
+    ];
+
+    function getColorForUser(user) {
+      if (!userColors[user]) {
+        userColors[user] = colorPalette[Object.keys(userColors).length % colorPalette.length];
+      }
+      return userColors[user];
+    }
+
+    async function loadRooms() {
+      const res = await fetch(`${baseURL}/rooms`);
+      const rooms = await res.json();
+      const sel = document.getElementById("roomSelect");
+      sel.innerHTML = "";
+      rooms.forEach(r => {
+        let o = document.createElement("option");
+        o.value = o.text = r;
+        sel.append(o);
+      });
+      if (rooms.length) {
+        currentRoom = rooms[0];
+        sel.value = currentRoom;
+        await loadMessages();
+      }
+    }
+
+    async function loadMessages() {
+      currentRoom = document.getElementById("roomSelect").value;
+      const res = await fetch(`${baseURL}/rooms/${currentRoom}/messages?limit=50`);
+      const msgs = await res.json();
+      renderMessages(msgs);
+    }
+
+    function renderMessages(msgs) {
+      const box = document.getElementById("chat-box");
+      const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 10;
+      const scrollSnapshot = box.scrollHeight - box.scrollTop;
+      box.innerHTML = "";
+
+      msgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).forEach(m => {
+        const div = document.createElement("div");
+        div.className = "msg";
+        const color = getColorForUser(m.name);
+        div.innerHTML = `
+          <span class="username" style="background-color: ${color}">${m.name}</span> ${m.message}
+          <span class="timestamp">${m.timestamp}</span>`;
+        box.append(div);
+      });
+
+      if (atBottom) {
+        box.scrollTop = box.scrollHeight;
+      } else {
+        box.scrollTop = box.scrollHeight - scrollSnapshot;
+      }
+    }
+
+    async function checkForUpdates() {
+      if (!currentRoom) return;
+      await loadMessages();
+    }
+
+    async function sendMessage() {
+      const name = document.getElementById("nameInput").value.trim() || "Anonymous Agent";
+      const msg = document.getElementById("messageInput").value.trim();
+      if (!msg || !currentRoom) return;
+      await fetch(`${baseURL}/rooms/${currentRoom}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name, message: msg })
+      });
+      document.getElementById("messageInput").value = "";
+      await loadMessages();
+    }
+
+    loadRooms();
+    setInterval(checkForUpdates, 3000);
+  </script>
+</body>
+</html>
